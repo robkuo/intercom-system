@@ -22,6 +22,10 @@ class SipService : Service() {
         const val CHANNEL_ID = "sip_service_channel"
         const val INCOMING_CALL_CHANNEL_ID = "incoming_call_channel"
 
+        // Doze 喚醒：每 8 分鐘重新登錄，確保 NAT mapping 長期有效
+        const val ACTION_DOZE_WAKEUP = "com.intercom.app.DOZE_WAKEUP"
+        private const val WAKEUP_INTERVAL_MS = 8L * 60 * 1000   // 8 分鐘
+
         var instance: SipService? = null
     }
 
@@ -116,11 +120,20 @@ class SipService : Service() {
         }
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        if (intent?.action == ACTION_DOZE_WAKEUP) {
+            Log.i(TAG, "Doze wakeup alarm 觸發，重新登錄以刷新 NAT mapping")
+            if (miniSip?.isInCall() != true) startMiniSip()
+            scheduleDozeWakeup()   // 安排下一次
+            return START_STICKY
+        }
+        return START_STICKY
+    }
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
         super.onDestroy()
+        cancelDozeWakeup()
         // 服務停止前先清除「已連線」狀態，避免下次啟動前 MainActivity 誤顯示「已連線」
         rawSaveStatus("failed", "服務已停止，重新啟動中…")
         instance = null
@@ -163,6 +176,8 @@ class SipService : Service() {
                     updateNotification("已登錄（分機 $extension）")
                     saveStatus("registered", extension)
                     sendBroadcast(Intent("com.intercom.app.SIP_REGISTERED"))
+                    // 啟動 Doze 喚醒鬧鐘（每 8 分鐘重新登錄，確保待機數天仍可收到來電）
+                    scheduleDozeWakeup()
                     // 非同步從 Server 取得公司名稱並存入 SharedPreferences
                     ApiClient.fetchCompanyName(serverIp, extension) { name ->
                         val displayName = name ?: return@fetchCompanyName  // null = 找不到，保持分機號顯示
@@ -563,4 +578,43 @@ class SipService : Service() {
         (getSystemService(NOTIFICATION_SERVICE) as NotificationManager)
             .notify(NOTIFICATION_ID, buildNotification(status))
     }
+
+    // ───────── Doze 喚醒鬧鐘（NAT mapping / SIP 登錄長期保活）─────────
+
+    /**
+     * 每 8 分鐘透過 setExactAndAllowWhileIdle() 喚醒服務並重新 SIP 登錄。
+     *
+     * 背景：Android Doze 模式會凍結 HandlerThread.postDelayed() 與
+     * mainHandler.postDelayed()，導致 25 秒 UDP keepalive 和 55 分鐘
+     * 重新登錄均無法執行，NAT mapping 過期後 Asterisk 就打不進來。
+     *
+     * setExactAndAllowWhileIdle() 保證在 Doze 維護視窗內觸發
+     * （系統保證最多延遲約 9 分鐘），無需額外權限。
+     */
+    private fun scheduleDozeWakeup() {
+        val am = getSystemService(ALARM_SERVICE) as AlarmManager
+        am.setExactAndAllowWhileIdle(
+            AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            SystemClock.elapsedRealtime() + WAKEUP_INTERVAL_MS,
+            dozeWakeupPendingIntent()
+        )
+        Log.d(TAG, "Doze wakeup 已排程，${WAKEUP_INTERVAL_MS / 60000} 分鐘後觸發")
+    }
+
+    private fun cancelDozeWakeup() {
+        try {
+            (getSystemService(ALARM_SERVICE) as AlarmManager)
+                .cancel(dozeWakeupPendingIntent())
+            Log.d(TAG, "Doze wakeup 已取消")
+        } catch (e: Exception) {
+            Log.w(TAG, "cancelDozeWakeup 失敗: ${e.message}")
+        }
+    }
+
+    private fun dozeWakeupPendingIntent(): PendingIntent =
+        PendingIntent.getService(
+            this, 42,
+            Intent(this, SipService::class.java).apply { action = ACTION_DOZE_WAKEUP },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 }

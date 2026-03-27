@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">對講機</string>
+    <string name="sip_service_channel">SIP 服務</string>
+    <string name="incoming_call_channel">來電通知</string>
+</resources>

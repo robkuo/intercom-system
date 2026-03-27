@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:gravity="center"
+    android:padding="32dp"
+    android:background="#1A1A2E">
+
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:src="@android:drawable/ic_menu_call"
+        android:tint="#4FC3F7"
+        android:layout_marginBottom="24dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="對講機"
+        android:textSize="28sp"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:id="@+id/tvExtension"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="伺服器：192.168.100.163  分機：101"
+        android:textSize="13sp"
+        android:textColor="#90CAF9"
+        android:gravity="center"
+        android:layout_marginBottom="16dp" />
+
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="● 啟動中..."
+        android:textSize="18sp"
+        android:textColor="#FFA726"
+        android:layout_marginBottom="8dp" />
+
+    <!-- 診斷訊息（錯誤時顯示詳細內容） -->
+    <TextView
+        android:id="@+id/tvDiag"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="11sp"
+        android:textColor="#EF9A9A"
+        android:gravity="center"
+        android:layout_marginBottom="32dp" />
+
+    <Button
+        android:id="@+id/btnSettings"
+        android:layout_width="200dp"
+        android:layout_height="48dp"
+        android:text="設定"
+        android:backgroundTint="#4FC3F7"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="12dp" />
+
+    <Button
+        android:id="@+id/btnRetry"
+        android:layout_width="200dp"
+        android:layout_height="48dp"
+        android:text="重新連線"
+        android:backgroundTint="#546E7A"
+        android:textColor="#FFFFFF"
+        android:layout_marginBottom="32dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="有人按門鈴時，手機會自動響鈴並顯示門口影像"
+        android:textSize="12sp"
+        android:textColor="#607D8B"
+        android:gravity="center" />
+
+</LinearLayout>

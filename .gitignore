@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Media files
+*.wav
+*.mp3
+*.jpg
+*.jpeg
+*.png
+*.gif
+
+# Logs
+*.log
+logs/
+*.txt
+
+# Android build
+IntercomApp/.gradle/
+IntercomApp/app/build/
+IntercomApp/local.properties
+IntercomApp/*.apk
+*.apk
+
+# Environment / secrets
+.env
+config_local.py
+audio_config.json
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temp files
+*.tmp
+*.bak
+nul

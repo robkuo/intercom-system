@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- 對應 context.filesDir，用於 OTA 更新下載的 APK 檔案 -->
+    <files-path name="apk_files" path="." />
+</paths>

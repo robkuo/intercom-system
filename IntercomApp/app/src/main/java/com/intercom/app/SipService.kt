@@ -10,6 +10,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import android.net.wifi.WifiManager
 import android.os.*
 import android.util.Log
 import androidx.core.app.NotificationCompat
@@ -32,6 +33,7 @@ class SipService : Service() {
     private var miniSip: MiniSipStack? = null
     internal var rtpSession: RtpAudioSession? = null
     private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null   // 保持 WiFi radio 活躍，確保 Doze 中仍能收到 INVITE
     private val mainHandler = Handler(Looper.getMainLooper())
     private var localRtpPort = 16384
     private var currentExtension = "101"   // 目前登錄中的分機
@@ -99,6 +101,10 @@ class SipService : Service() {
             return
         }
 
+        // WiFi Lock：保持 WiFi radio 活躍，確保 Doze 深度模式下仍能接收 INVITE 封包
+        // WIFI_MODE_FULL_HIGH_PERF 是 VoIP 標準做法（Linphone/Zoiper 均使用）
+        acquireWifiLock()
+
         startMiniSip()
 
         // 監聽網路切換（WiFi 重連後 IP 可能變更，需重新 SIP 登錄）
@@ -141,6 +147,7 @@ class SipService : Service() {
         miniSip?.stop()
         miniSip = null
         releaseWakeLock()
+        releaseWifiLock()
         connectivityCallback?.let {
             (getSystemService(CONNECTIVITY_SERVICE) as ConnectivityManager)
                 .unregisterNetworkCallback(it)
@@ -550,6 +557,38 @@ class SipService : Service() {
     private fun releaseWakeLock() {
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
+    }
+
+    /**
+     * WiFi Lock：WIFI_MODE_FULL_HIGH_PERF 讓 WiFi radio 保持全功率活躍。
+     *
+     * 問題：Android Doze 深度模式下 WiFi radio 進入低功耗休眠，
+     * 路由器送來的 INVITE UDP 封包無法喚醒 radio → 電話打不進來。
+     *
+     * 對講機場景手機通常在室內接充電，WiFi Lock 的耗電量可接受。
+     * 未持有 WiFi Lock 時（通話中已足夠，RTP 封包本身維持 radio 活躍），
+     * 不需要特別釋放 → 因此整個 Service 生命週期持有一把 Lock 即可。
+     */
+    private fun acquireWifiLock() {
+        try {
+            val wm = applicationContext.getSystemService(WIFI_SERVICE) as WifiManager
+            @Suppress("DEPRECATION")
+            wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "IntercomApp:SipWifiLock")
+            wifiLock?.acquire()
+            Log.i(TAG, "WiFi Lock 已取得（FULL_HIGH_PERF）")
+        } catch (e: Exception) {
+            Log.w(TAG, "acquireWifiLock 失敗: ${e.message}")
+        }
+    }
+
+    private fun releaseWifiLock() {
+        try {
+            wifiLock?.let { if (it.isHeld) it.release() }
+            wifiLock = null
+            Log.i(TAG, "WiFi Lock 已釋放")
+        } catch (e: Exception) {
+            Log.w(TAG, "releaseWifiLock 失敗: ${e.message}")
+        }
     }
 
     private fun createNotificationChannels() {
